@@ -1,0 +1,14 @@
+services:
+  mongodb:
+    image: mongo:8.3.11
+    container_name: cahaya-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - cahaya_mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: cahaya_kehidupan
+
+volumes:
+  cahaya_mongodb_data:
