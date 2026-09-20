@@ -36,6 +36,21 @@ export default function Users() {
     finally { setSaving(false); }
   };
 
+const updateMemberStatus = async (u, status) => {
+  try {
+    await api.put(`/users/${u.id}/status?status=${status}`);
+
+    toast.success(
+      status === "APPROVED"
+        ? "Member berhasil disetujui"
+        : "Member berhasil ditolak"
+    );
+
+    load();
+  } catch (e) {
+    toast.error(formatApiError(e.response?.data?.detail));
+  }
+};
   const confirmDelete = async () => {
     try {
       await api.delete(`/users/${del.id}`);
@@ -79,6 +94,7 @@ export default function Users() {
                   <th className="px-5 py-3 font-medium">Nama</th>
                   <th className="px-5 py-3 font-medium hidden sm:table-cell">Email</th>
                   <th className="px-5 py-3 font-medium">Peran</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
                   <th className="px-5 py-3 font-medium text-right">Aksi</th>
                 </tr>
               </thead>
@@ -94,15 +110,70 @@ export default function Users() {
                       </div>
                     </td>
                     <td className="px-5 py-3.5 hidden sm:table-cell text-slate-400 font-mono-ck text-xs">{u.email}</td>
-                    <td className="px-5 py-3.5"><RoleBadge role={u.role} /></td>
                     <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(u)} data-testid={`btn-edit-user-${u.id}`} className="p-2 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800"><Pencil className="w-4 h-4" /></button>
-                        {u.id !== user.id && (
-                          <button onClick={() => setDel(u)} data-testid={`btn-delete-user-${u.id}`} className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"><Trash2 className="w-4 h-4" /></button>
-                        )}
-                      </div>
+                    <RoleBadge role={u.role} />
                     </td>
+
+                  <td className="px-5 py-3.5">{u.role === "MEMBER" ? (
+                <span
+         className={
+        u.status === "APPROVED"
+          ? "text-emerald-400 text-xs font-medium"
+          : u.status === "REJECTED"
+          ? "text-red-400 text-xs font-medium"
+          : "text-amber-400 text-xs font-medium"
+      }
+    >
+      {u.status || "PENDING"}
+    </span>
+  ) : (
+    <span className="text-slate-500 text-xs">—</span>
+  )}
+</td>
+
+                  <td className="px-5 py-3.5">
+  <div className="flex items-center justify-end gap-1">
+
+    {u.role === "MEMBER" && u.status === "PENDING" && (
+      <>
+        <button
+          onClick={() => updateMemberStatus(u, "APPROVED")}
+          data-testid={`btn-approve-user-${u.id}`}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20"
+        >
+          Approve
+        </button>
+
+        <button
+          onClick={() => updateMemberStatus(u, "REJECTED")}
+          data-testid={`btn-reject-user-${u.id}`}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+        >
+          Reject
+        </button>
+      </>
+    )}
+
+    <button
+      onClick={() => openEdit(u)}
+      data-testid={`btn-edit-user-${u.id}`}
+      className="p-2 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-slate-800"
+    >
+      <Pencil className="w-4 h-4" />
+    </button>
+
+    {u.id !== user.id && (
+      <button
+        onClick={() => setDel(u)}
+        data-testid={`btn-delete-user-${u.id}`}
+        className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    )}
+
+  </div>
+</td>
                   </tr>
                 ))}
               </tbody>

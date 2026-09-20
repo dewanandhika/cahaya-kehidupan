@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import pub, { mediaUrl, fmtDate } from "@/lib/publicApi";
 import { Loader, EmptyState, TypePill, PostCard } from "@/components/site/ui";
-import { ArrowLeft, Calendar, User, Tag as TagIcon } from "lucide-react";
+import { ArrowLeft, Calendar, User, Tag as TagIcon, Lock, LogIn } from "lucide-react";
 
 export default function PostDetail() {
   const { slug } = useParams();
@@ -47,8 +47,42 @@ export default function PostDetail() {
         )}
 
         <div className="article-body mt-10">
-          {paras.map((p, i) => <p key={i}>{p}</p>)}
-        </div>
+  {paras.map((p, i) => <p key={i}>{p}</p>)}
+</div>
+
+{post.locked && (
+  <div className="mt-10 rounded-2xl border border-[#E6DDC8] bg-cream-2 p-6 sm:p-8 text-center">
+    <div className="mx-auto w-12 h-12 rounded-full bg-[#C79A3E]/15 flex items-center justify-center mb-4">
+      <Lock className="w-5 h-5 text-gold" />
+    </div>
+
+    <h3 className="font-display text-xl sm:text-2xl font-bold text-navy">
+      Ingin membaca tulisan selengkapnya?
+    </h3>
+
+    <p className="mt-2 text-sm sm:text-base text-[#5C6B7C] max-w-xl mx-auto leading-relaxed">
+      Daftar sebagai member Cahaya Kehidupan untuk mendapatkan akses
+      membaca tulisan secara lengkap setelah akun disetujui oleh Owner.
+    </p>
+
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
+      <Link
+        to="/daftar"
+        className="inline-flex items-center justify-center gap-2 bg-[#C79A3E] hover:bg-[#A67C2E] text-white font-semibold px-6 py-3 rounded-full transition-colors"
+      >
+        Daftar sebagai Member
+      </Link>
+
+      <Link
+       to="/masuk"
+        className="inline-flex items-center justify-center gap-2 border border-[#C79A3E] text-[#8A6A24] hover:bg-[#C79A3E]/10 font-semibold px-6 py-3 rounded-full transition-colors"
+      >
+        <LogIn className="w-4 h-4" />
+        Sudah punya akun? Masuk
+      </Link>
+    </div>
+  </div>
+)}
 
         {post.tags?.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 mt-10 pt-8 border-t border-[#EAE3D3]">

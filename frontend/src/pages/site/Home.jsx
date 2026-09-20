@@ -68,9 +68,14 @@ export default function Home() {
               <p className="font-read italic text-lg">"Allah adalah Cahaya langit dan bumi." <span className="text-gold not-italic font-semibold">— QS. An-Nur: 35</span></p>
             </div>
             <div className="mt-9 flex flex-wrap gap-4">
-              <Link to="/artikel" data-testid="hero-cta-explore" className="inline-flex items-center gap-2 bg-gold hover:bg-[#A67C2E] text-white font-semibold px-7 py-3.5 rounded-full transition-colors shadow-lg shadow-black/20">
-                Jelajahi Tulisan <ArrowRight className="w-4 h-4" />
-              </Link>
+              <Link
+  to="/artikel"
+  data-testid="hero-cta-explore"
+  className="inline-flex items-center gap-2 bg-[#C79A3E] hover:bg-[#A67C2E] text-white font-semibold px-7 py-3.5 rounded-full transition-colors shadow-lg shadow-black/20"
+>
+  Jelajahi Tulisan
+  <ArrowRight className="w-4 h-4" />
+</Link>
               <Link to="/tentang-penulis" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 text-white font-semibold px-7 py-3.5 rounded-full transition-colors backdrop-blur">
                 Tentang Penulis
               </Link>
@@ -80,15 +85,15 @@ export default function Home() {
       </section>
 
       {/* QUICK ACCESS */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 -mt-10 relative z-10">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {QUICK.map((c) => (
-  <Link
-    key={c.to}
-    to={c.to}
-    data-testid={`quick-${c.title}`}
-   className="group relative min-h-[300px] overflow-hidden rounded-2xl border border-[#EAE3D3] shadow-md card-hover"
-  >
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-10 relative z-10">
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    {QUICK.map((c) => (
+      <Link
+        key={c.to}
+        to={c.to}
+        data-testid={`quick-${c.title}`}
+        className="group relative h-[210px] sm:h-[220px] lg:h-[230px] overflow-hidden rounded-2xl border border-[#EAE3D3] shadow-md card-hover"
+      >
     {/* Background Image */}
     <img
   src={c.image}
@@ -100,20 +105,20 @@ export default function Home() {
     <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
 
     {/* Content */}
-    <div className="relative z-10 h-full min-h-[300px] p-6 flex flex-col justify-end text-white">
-      <div className="w-12 h-12 rounded-lg bg-white/95 flex items-center justify-center mb-4 shadow-lg">
-        <c.icon className="w-6 h-6 text-gold" />
-      </div>
+    <div className="relative z-10 h-full p-4 sm:p-5 flex flex-col justify-end text-white">
+      <div className="w-10 h-10 rounded-lg bg-white/95 flex items-center justify-center mb-3 shadow-lg">
+  <c.icon className="w-5 h-5 text-gold" />
+</div>
 
-      <h3 className="font-display text-2xl font-bold text-white">
+      <h3 className="font-display text-xl lg:text-[22px] font-bold text-white">
         {c.title}
       </h3>
 
-      <p className="text-sm text-white/85 mt-2 leading-relaxed">
+      <p className="text-xs sm:text-sm text-white/85 mt-1.5 leading-relaxed line-clamp-2">
         {c.desc}
       </p>
 
-      <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-gold">
+      <span className="mt-3 inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-gold">
         {c.cta}
         <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
       </span>
@@ -213,7 +218,7 @@ export default function Home() {
         <section className="bg-cream-2 py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6">
             <SectionHeading title="Kategori Tulisan" to="/artikel" linkLabel="Semua Artikel" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">
               {data.categories.map((c) => (
                 <Link key={c.id} to={`/artikel?kategori=${c.slug}`} className="card-hover bg-white rounded-xl p-5 border border-[#EAE3D3] flex items-center justify-between">
                   <div>

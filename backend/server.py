@@ -334,12 +334,49 @@ class SettingsInput(BaseModel):
 async def login(data: LoginInput):
     email = data.email.lower()
     user = await db.users.find_one({"email": email})
+
     if not user or not verify_password(data.password, user.get("password_hash", "")):
-        raise HTTPException(status_code=401, detail="Email atau kata sandi salah")
-    token = create_access_token(user["id"], user["email"], user["role"])
+        raise HTTPException(
+            status_code=401,
+            detail="Email atau kata sandi salah"
+        )
+
+    # Pemeriksaan status khusus MEMBER
+    if user.get("role") == "MEMBER":
+        status = user.get("status", "PENDING")
+
+        if status == "PENDING":
+            raise HTTPException(
+                status_code=403,
+                detail="Akun Anda masih menunggu persetujuan Owner."
+            )
+
+        if status == "REJECTED":
+            raise HTTPException(
+                status_code=403,
+                detail="Pendaftaran akun Anda ditolak."
+            )
+
+        if status != "APPROVED":
+            raise HTTPException(
+                status_code=403,
+                detail="Status akun tidak valid."
+            )
+
+    # Buat token setelah pemeriksaan status berhasil
+    token = create_access_token(
+        user["id"],
+        user["email"],
+        user["role"]
+    )
+
     clean(user)
     user.pop("password_hash", None)
-    return {"token": token, "user": user}
+
+    return {
+        "token": token,
+        "user": user
+    }
 
 
 @api_router.get("/auth/me")
@@ -350,28 +387,51 @@ async def me(user: dict = Depends(get_current_user)):
 @api_router.post("/auth/register")
 async def register(data: RegisterInput):
     email = data.email.lower().strip()
+
     if not data.name.strip():
-        raise HTTPException(status_code=422, detail="Nama wajib diisi")
+        raise HTTPException(
+            status_code=422,
+            detail="Nama wajib diisi"
+        )
+
     if len(data.password) < 6:
-        raise HTTPException(status_code=422, detail="Kata sandi minimal 6 karakter")
+        raise HTTPException(
+            status_code=422,
+            detail="Kata sandi minimal 6 karakter"
+        )
+
     if await db.users.find_one({"email": email}):
-        raise HTTPException(status_code=422, detail="Email sudah terdaftar")
+        raise HTTPException(
+            status_code=422,
+            detail="Email sudah terdaftar"
+        )
+
     doc = {
         "id": str(uuid.uuid4()),
         "name": data.name.strip(),
         "email": email,
         "password_hash": hash_password(data.password),
         "role": "MEMBER",
+        "status": "PENDING",
         "avatar": "",
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
+
     await db.users.insert_one(doc)
-    token = create_access_token(doc["id"], doc["email"], doc["role"])
+
     clean(doc)
     doc.pop("password_hash", None)
-    return {"token": token, "user": doc}
 
+    return {
+        "message": "Pendaftaran berhasil. Akun Anda menunggu persetujuan Owner.",
+        "user": doc
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dashboard
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Dashboard
@@ -851,26 +911,48 @@ async def create_user(data: UserCreate, user: dict = Depends(require_roles("SUPE
     return doc
 
 
-@api_router.put("/users/{item_id}")
-async def update_user(item_id: str, data: UserUpdate, user: dict = Depends(require_roles("SUPER_ADMIN"))):
+@api_router.put("/users/{item_id}/status")
+async def update_user_status(
+    item_id: str,
+    status: str,
+    user: dict = Depends(require_roles("SUPER_ADMIN"))
+):
+    if status not in ["PENDING", "APPROVED", "REJECTED"]:
+        raise HTTPException(
+            status_code=422,
+            detail="Status tidak valid"
+        )
+
     existing = await db.users.find_one({"id": item_id})
+
     if not existing:
-        raise HTTPException(404, "Pengguna tidak ditemukan")
-    upd = {}
-    if data.name is not None:
-        upd["name"] = data.name
-    if data.email is not None:
-        upd["email"] = data.email.lower()
-    if data.role is not None:
-        if data.role not in ROLES:
-            raise HTTPException(422, "Peran tidak valid")
-        upd["role"] = data.role
-    if data.password:
-        upd["password_hash"] = hash_password(data.password)
-    upd["updated_at"] = now_iso()
-    await db.users.update_one({"id": item_id}, {"$set": upd})
-    doc = await db.users.find_one({"id": item_id}, {"_id": 0, "password_hash": 0})
-    return doc
+        raise HTTPException(
+            status_code=404,
+            detail="Pengguna tidak ditemukan"
+        )
+
+    if existing.get("role") != "MEMBER":
+        raise HTTPException(
+            status_code=422,
+            detail="Status approval hanya berlaku untuk MEMBER"
+        )
+
+    await db.users.update_one(
+        {"id": item_id},
+        {
+            "$set": {
+                "status": status,
+                "updated_at": now_iso()
+            }
+        }
+    )
+
+    updated = await db.users.find_one(
+        {"id": item_id},
+        {"_id": 0, "password_hash": 0}
+    )
+
+    return updated
 
 
 @api_router.delete("/users/{item_id}")
@@ -1017,7 +1099,6 @@ def card(p: dict) -> dict:
         "slug": p["slug"],
         "subtitle": p.get("subtitle", ""),
         "excerpt": p.get("excerpt", ""),
-        "content": p.get("content", ""),
         "cover_image": p.get("cover_image", ""),
         "video_url": p.get("video_url", ""),
         "gallery_images": p.get("gallery_images", []),
@@ -1113,16 +1194,70 @@ async def pub_posts(type: Optional[str] = None, category: Optional[str] = None, 
 
 
 @public_router.get("/post/{slug}")
-async def pub_post(slug: str):
-    p = await db.posts.find_one({"slug": slug, "status": "PUBLISHED"}, {"_id": 0})
+async def pub_post(
+    slug: str,
+    user: Optional[dict] = Depends(get_optional_user)
+):
+    p = await db.posts.find_one(
+        {"slug": slug, "status": "PUBLISHED"},
+        {"_id": 0}
+    )
+
     if not p:
         raise HTTPException(404, "Tulisan tidak ditemukan")
+
     enriched = await public_enrich(p)
-    related_q = {"status": "PUBLISHED", "id": {"$ne": p["id"]}, "type": p["type"]}
+
+    # Tentukan apakah user boleh membaca konten penuh
+    can_read_full = False
+
+    if user:
+        role = user.get("role")
+        status = user.get("status")
+
+        # Staff CMS selalu boleh membaca penuh
+        if role in ["SUPER_ADMIN", "EDITOR", "AUTHOR"]:
+            can_read_full = True
+
+        # MEMBER hanya boleh jika sudah APPROVED
+        elif role == "MEMBER" and status == "APPROVED":
+            can_read_full = True
+
+    # Guest / PENDING / REJECTED hanya mendapatkan preview
+    if not can_read_full:
+        content = enriched.get("content", "")
+
+        # Buat preview dari isi artikel
+        preview_length = 600
+
+        if len(content) > preview_length:
+            enriched["content"] = content[:preview_length].rstrip() + "..."
+        else:
+            enriched["content"] = content
+
+        enriched["locked"] = True
+    else:
+        enriched["locked"] = False
+
+    related_q = {
+        "status": "PUBLISHED",
+        "id": {"$ne": p["id"]},
+        "type": p["type"]
+    }
+
     if p.get("category_id"):
         related_q["category_id"] = p["category_id"]
-    related = await db.posts.find(related_q, {"_id": 0}).sort("published_at", -1).to_list(3)
-    enriched["related"] = [card(await public_enrich(r)) for r in related]
+
+    related = await db.posts.find(
+        related_q,
+        {"_id": 0}
+    ).sort("published_at", -1).to_list(3)
+
+    enriched["related"] = [
+        card(await public_enrich(r))
+        for r in related
+    ]
+
     return enriched
 
 
@@ -1177,17 +1312,50 @@ async def pub_books():
 
 
 @public_router.get("/book/{slug}")
-async def pub_book(slug: str, user: Optional[dict] = Depends(get_optional_user)):
-    b = await db.books.find_one({"slug": slug, "status": "PUBLISHED"}, {"_id": 0})
+async def pub_book(
+    slug: str,
+    user: Optional[dict] = Depends(get_optional_user)
+):
+    b = await db.books.find_one(
+        {"slug": slug, "status": "PUBLISHED"},
+        {"_id": 0}
+    )
+
     if not b:
         raise HTTPException(404, "Buku tidak ditemukan")
-    b["author"] = await db.authors.find_one({"id": b.get("author_id")}, {"_id": 0}) if b.get("author_id") else None
-    if not user:
+
+    b["author"] = (
+        await db.authors.find_one(
+            {"id": b.get("author_id")},
+            {"_id": 0}
+        )
+        if b.get("author_id")
+        else None
+    )
+
+    # Tentukan apakah user boleh membaca buku penuh
+    can_read_full = False
+
+    if user:
+        role = user.get("role")
+        status = user.get("status")
+
+        # Staff CMS dapat membaca penuh
+        if role in ["SUPER_ADMIN", "EDITOR", "AUTHOR"]:
+            can_read_full = True
+
+        # MEMBER hanya jika sudah disetujui Owner
+        elif role == "MEMBER" and status == "APPROVED":
+            can_read_full = True
+
+    # Guest / PENDING / REJECTED
+    if not can_read_full:
         b["locked"] = True
         b["content"] = ""
         b["pdf_file"] = ""
     else:
         b["locked"] = False
+
     return b
 
 
@@ -1200,17 +1368,50 @@ async def pub_risalahs():
 
 
 @public_router.get("/risalah/{slug}")
-async def pub_risalah(slug: str, user: Optional[dict] = Depends(get_optional_user)):
-    b = await db.risalahs.find_one({"slug": slug, "status": "PUBLISHED"}, {"_id": 0})
+async def pub_risalah(
+    slug: str,
+    user: Optional[dict] = Depends(get_optional_user)
+):
+    b = await db.risalahs.find_one(
+        {"slug": slug, "status": "PUBLISHED"},
+        {"_id": 0}
+    )
+
     if not b:
         raise HTTPException(404, "Risalah tidak ditemukan")
-    b["author"] = await db.authors.find_one({"id": b.get("author_id")}, {"_id": 0}) if b.get("author_id") else None
-    if not user:
+
+    b["author"] = (
+        await db.authors.find_one(
+            {"id": b.get("author_id")},
+            {"_id": 0}
+        )
+        if b.get("author_id")
+        else None
+    )
+
+    # Tentukan apakah user boleh membaca risalah penuh
+    can_read_full = False
+
+    if user:
+        role = user.get("role")
+        status = user.get("status")
+
+        # Staff CMS dapat membaca penuh
+        if role in ["SUPER_ADMIN", "EDITOR", "AUTHOR"]:
+            can_read_full = True
+
+        # MEMBER hanya jika sudah disetujui Owner
+        elif role == "MEMBER" and status == "APPROVED":
+            can_read_full = True
+
+    # Guest / PENDING / REJECTED
+    if not can_read_full:
         b["locked"] = True
         b["content"] = ""
         b["pdf_file"] = ""
     else:
         b["locked"] = False
+
     return b
 
 
