@@ -35,7 +35,7 @@ export default function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 bg-cream border-b border-[#E6DDC8] shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="w-full max-w-[1700px] mx-auto px-6 lg:px-8">
         <div className="flex items-center gap-4 h-20">
           <Link to="/" className="flex items-center gap-3 shrink-0" data-testid="site-logo">
             <img src="/logo-cahaya.png" alt="Cahaya Kehidupan" className="h-11 w-11 object-contain" />
@@ -45,7 +45,7 @@ export default function SiteHeader() {
             </div>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-7 ml-6">
+          <nav className="hidden lg:flex items-center gap-5 ml-5">
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} data-testid={`nav-${n.label}`}
                 className={({ isActive }) => `site-link text-sm font-semibold text-navy/80 hover:text-navy ${isActive ? "active text-navy" : ""}`}>
@@ -54,15 +54,15 @@ export default function SiteHeader() {
             ))}
           </nav>
 
-          <form onSubmit={search} className="hidden md:flex items-center ml-auto">
+          <form onSubmit={search} className="hidden md:flex items-center ml-auto shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9AA6B4]" />
               <input value={q} onChange={(e) => setQ(e.target.value)} data-testid="site-search-input"
-                placeholder="Cari tulisan, ayat, tema..." className="w-44 xl:w-64 pl-9 pr-3 py-2.5 rounded-full bg-white border border-[#E6DDC8] text-sm text-navy placeholder:text-[#9AA6B4] focus:outline-none focus:ring-2 focus:ring-[#C79A3E]/40 focus:border-[#C79A3E]" />
+                placeholder="Cari tulisan, ayat, tema..." className="w-44 xl:w-56 pl-9 pr-3 py-2.5 rounded-full bg-white border border-[#E6DDC8] text-sm text-navy placeholder:text-[#9AA6B4] focus:outline-none focus:ring-2 focus:ring-[#C79A3E]/40 focus:border-[#C79A3E]" />
             </div>
           </form>
 
-          <div className="hidden lg:flex items-center gap-2 ml-3">
+          <div className="hidden lg:flex items-center gap-2 ml-2 shrink-0">
             {!user ? (
               <>
                 <Link to="/masuk" data-testid="header-login" className="px-4 py-2 rounded-full text-sm font-semibold text-navy border border-[#E6DDC8] hover:border-navy transition-colors">Masuk</Link>
