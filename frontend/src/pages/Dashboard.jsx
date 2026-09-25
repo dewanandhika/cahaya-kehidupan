@@ -75,7 +75,36 @@ export default function Dashboard() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 ck-card overflow-hidden" data-testid="table-recent-posts">
+              {stats.pending_member_count > 0 && (
+        <div className="ck-card mb-6 border-amber-500/30 bg-amber-500/5">
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <UsersIcon className="w-5 h-5 text-amber-400" />
+                <h3 className="font-serif-ck text-lg font-semibold text-slate-100">
+                  Persetujuan Member
+                </h3>
+              </div>
+
+              <p className="text-sm text-slate-400 mt-1">
+                Ada {stats.pending_member_count} pendaftaran member yang menunggu persetujuan Owner.
+              </p>
+            </div>
+
+            <button
+              onClick={() => navigate("/admin/users")}
+              className="shrink-0 inline-flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Periksa
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="grid lg:grid-cols-3 gap-6"></div>
+      <div className="grid lg:grid-cols-3 gap-6 items-start"></div>
+        <div className="lg:col-span-2 lg:col-start-1 ck-card overflow-hidden"data-testid="table-recent-posts">
           <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
             <h3 className="font-serif-ck text-lg font-semibold text-slate-100">Konten Terbaru</h3>
             <button onClick={() => navigate("/admin/posts")} className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1">
@@ -103,7 +132,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="ck-card overflow-hidden">
+        <div className="lg:col-span-1 lg:col-start-3 ck-card overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-800">
             <h3 className="font-serif-ck text-lg font-semibold text-slate-100">Draf Dalam Pengerjaan</h3>
           </div>

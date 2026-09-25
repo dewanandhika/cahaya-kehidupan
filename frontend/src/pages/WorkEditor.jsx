@@ -140,7 +140,7 @@ export default function WorkEditor({ kind }) {
 
           <div className="ck-card p-6 space-y-4">
             <div className="ck-label">Berkas PDF</div>
-            <MediaPicker value={form.pdf_file} onChange={(v) => set("pdf_file", v)} label="PDF" accept="all" />
+            <MediaPicker value={form.pdf_file} onChange={(v) => set("pdf_file", v)} label="PDF" accept="pdf" />
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <span className="text-sm text-slate-300">Izinkan Unduh PDF</span>
               <button type="button" onClick={() => set("download_enabled", !form.download_enabled)} data-testid="work-toggle-download"

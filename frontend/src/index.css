@@ -84,7 +84,92 @@ body {
   line-height: 1.9;
   color: #2A3E55;
 }
-.article-body p { margin: 0 0 1.4rem; }
+
+.article-body p {
+  margin: 0 0 1.4rem;
+}
+
+.article-body h1,
+.article-body h2,
+.article-body h3 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: #102A43;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.article-body h1 {
+  font-size: 2rem;
+}
+
+.article-body h2 {
+  font-size: 1.7rem;
+}
+
+.article-body h3 {
+  font-size: 1.4rem;
+}
+
+.article-body strong {
+  color: #102A43;
+  font-weight: 700;
+}
+
+.article-body em {
+  font-style: italic;
+}
+
+.article-body u {
+  text-decoration: underline;
+  text-decoration-color: #C79A3E;
+  text-underline-offset: 3px;
+}
+
+.article-body ul,
+.article-body ol {
+  margin: 1rem 0 1.5rem;
+  padding-left: 1.8rem;
+}
+
+.article-body ul {
+  list-style-type: disc;
+}
+
+.article-body ol {
+  list-style-type: decimal;
+}
+
+.article-body li {
+  margin-bottom: 0.5rem;
+}
+
+.article-body blockquote {
+  margin: 2rem 0;
+  padding: 1rem 1.5rem;
+  border-left: 4px solid #C79A3E;
+  background: #F7F3EA;
+  color: #5C6B7C;
+  font-style: italic;
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.article-body a {
+  color: #8A6A24;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.article-body a:hover {
+  color: #C79A3E;
+}
+
+.article-body hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid #EAE3D3;
+}
 
 .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

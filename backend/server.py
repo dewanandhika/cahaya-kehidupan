@@ -11,6 +11,8 @@ import logging
 import bcrypt
 import jwt
 import requests
+import smtplib
+from email.message import EmailMessage
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
@@ -37,6 +39,26 @@ EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("cahaya")
+def send_email(to_email: str, subject: str, body: str):
+    try:
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = os.environ["MAIL_FROM"]
+        msg["To"] = to_email
+        msg.set_content(body)
+
+        with smtplib.SMTP(os.environ["SMTP_HOST"], int(os.environ["SMTP_PORT"])) as smtp:
+            smtp.starttls()
+            smtp.login(
+                os.environ["SMTP_USERNAME"],
+                os.environ["SMTP_PASSWORD"]
+            )
+            smtp.send_message(msg)
+
+        logger.info(f"Email berhasil dikirim ke {to_email}")
+
+    except Exception as e:
+        logger.error(f"Gagal mengirim email ke {to_email}: {e}")
 
 app = FastAPI(title="Cahaya Kehidupan CMS")
 api_router = APIRouter(prefix="/api")
@@ -53,50 +75,58 @@ MIME_TYPES = {
 }
 ALLOWED_EXT = {"jpg", "jpeg", "png", "webp", "pdf", "mp4", "mp3"}
 
-ROLES = ["SUPER_ADMIN", "EDITOR", "AUTHOR"]
-
+ROLES = ["SUPER_ADMIN", "EDITOR", "AUTHOR", "MEMBER"]
 # ---------------------------------------------------------------------------
 # Object storage helpers
 # ---------------------------------------------------------------------------
-storage_key = None
+from pathlib import Path
+
+UPLOADS_DIR = Path(ROOT_DIR) / "uploads"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _safe_storage_path(path: str) -> Path:
+    """
+    Mengubah path object menjadi path lokal dan mencegah
+    path traversal di luar folder uploads.
+    """
+    clean_path = path.replace("\\", "/").lstrip("/")
+    target = (UPLOADS_DIR / clean_path).resolve()
+
+    if UPLOADS_DIR.resolve() not in target.parents:
+        raise HTTPException(status_code=400, detail="Path file tidak valid")
+
+    return target
 
 
 def init_storage(force: bool = False):
-    global storage_key
-    if storage_key and not force:
-        return storage_key
-    resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-    resp.raise_for_status()
-    storage_key = resp.json()["storage_key"]
-    return storage_key
+    """
+    Storage lokal tidak membutuhkan proses inisialisasi eksternal.
+    """
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    return str(UPLOADS_DIR)
 
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120,
-    )
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
-            data=data, timeout=120,
-        )
-    resp.raise_for_status()
-    return resp.json()
+    target = _safe_storage_path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    target.write_bytes(data)
+
+    return {
+        "path": path,
+        "size": len(data),
+        "content_type": content_type,
+    }
 
 
 def get_object(path: str):
-    key = init_storage()
-    resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    if resp.status_code == 404:
-        key = init_storage(force=True)
-        resp = requests.get(f"{STORAGE_URL}/objects/{path}", headers={"X-Storage-Key": key}, timeout=60)
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+    target = _safe_storage_path(path)
+
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail="File tidak ditemukan")
+
+    return target.read_bytes()
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +305,8 @@ class PostInput(BaseModel):
     excerpt: Optional[str] = ""
     content: str = ""
     cover_image: Optional[str] = ""
+    pdf_file: Optional[str] = ""
+    download_enabled: bool = False
     video_url: Optional[str] = ""
     gallery_images: List[str] = []
     type: str = "ARTICLE"  # ARTICLE | TADABBUR | CAHAYA_HIKMAH
@@ -285,7 +317,6 @@ class PostInput(BaseModel):
     tag_ids: List[str] = []
     collection_ids: List[str] = []
     published_at: Optional[str] = None
-    # tadabbur
     surah_id: Optional[str] = None
     ayat_number: Optional[str] = None
     theme: Optional[str] = None
@@ -330,6 +361,15 @@ class SettingsInput(BaseModel):
 # ---------------------------------------------------------------------------
 # Auth routes
 # ---------------------------------------------------------------------------
+@api_router.post("/test-email")
+async def test_email(user: dict = Depends(require_roles("SUPER_ADMIN"))):
+    send_email(
+        os.environ["OWNER_EMAIL"],
+        "Test Email — Cahaya Kehidupan",
+        "Ini adalah email pengujian dari sistem Cahaya Kehidupan.\n\n"
+        "Jika Anda menerima email ini, konfigurasi SMTP Gmail berhasil."
+    )
+    return {"ok": True, "message": "Email test berhasil dikirim"}
 @api_router.post("/auth/login")
 async def login(data: LoginInput):
     email = data.email.lower()
@@ -420,6 +460,19 @@ async def register(data: RegisterInput):
 
     await db.users.insert_one(doc)
 
+    send_email(
+        os.environ["OWNER_EMAIL"],
+        "Pendaftaran Member Baru — Cahaya Kehidupan",
+        f"""Ada pendaftaran member baru yang menunggu persetujuan Owner.
+
+Nama   : {doc["name"]}
+Email  : {doc["email"]}
+Status : PENDING
+Waktu  : {doc["created_at"]}
+
+Silakan buka CMS Cahaya Kehidupan untuk melakukan persetujuan atau penolakan akun.
+"""
+    )
     clean(doc)
     doc.pop("password_hash", None)
 
@@ -447,6 +500,16 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     user_count = await db.users.count_documents({})
     draft_count = await db.posts.count_documents({"status": "DRAFT"})
     published_count = await db.posts.count_documents({"status": "PUBLISHED"})
+    pending_members = await db.users.find(
+    {
+        "role": "MEMBER",
+        "status": "PENDING"
+    },
+    {
+        "_id": 0,
+        "password_hash": 0
+    }
+    ).sort("created_at", -1).to_list(10)
 
     recent = await db.posts.find({}, {"_id": 0}).sort("created_at", -1).to_list(8)
     drafts = await db.posts.find({"status": "DRAFT"}, {"_id": 0}).sort("created_at", -1).to_list(6)
@@ -464,6 +527,8 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "published_count": published_count,
         "recent_posts": recent,
         "draft_posts": drafts,
+        "pending_members": pending_members,
+        "pending_member_count": len(pending_members),
     }
 
 
@@ -910,6 +975,89 @@ async def create_user(data: UserCreate, user: dict = Depends(require_roles("SUPE
     doc.pop("password_hash", None)
     return doc
 
+@api_router.put("/users/{item_id}")
+async def update_user(
+    item_id: str,
+    data: UserUpdate,
+    user: dict = Depends(require_roles("SUPER_ADMIN"))
+):
+    existing = await db.users.find_one({"id": item_id})
+
+    if not existing:
+        raise HTTPException(
+            status_code=404,
+            detail="Pengguna tidak ditemukan"
+        )
+
+    if data.role is not None and data.role not in ROLES:
+        raise HTTPException(
+            status_code=422,
+            detail="Peran tidak valid"
+        )
+
+    if data.email is not None:
+        email = data.email.lower().strip()
+
+        duplicate = await db.users.find_one({
+            "email": email,
+            "id": {"$ne": item_id}
+        })
+
+        if duplicate:
+            raise HTTPException(
+                status_code=422,
+                detail="Email sudah terdaftar"
+            )
+    else:
+        email = existing.get("email")
+
+    upd = {}
+
+    if data.name is not None:
+        if not data.name.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Nama wajib diisi"
+            )
+        upd["name"] = data.name.strip()
+
+    if data.email is not None:
+        upd["email"] = email
+
+    if data.password:
+        if len(data.password) < 6:
+            raise HTTPException(
+                status_code=422,
+                detail="Kata sandi minimal 6 karakter"
+            )
+        upd["password_hash"] = hash_password(data.password)
+
+    if data.role is not None:
+        upd["role"] = data.role
+
+    if data.role == "MEMBER":
+        upd["status"] = "PENDING"
+    else:
+        upd.pop("status", None)
+
+    if data.role == "MEMBER":
+        upd["status"] = "PENDING"
+    else:
+        upd["status"] = None
+
+    upd["updated_at"] = now_iso()
+
+    await db.users.update_one(
+        {"id": item_id},
+        {"$set": upd}
+    )
+
+    updated = await db.users.find_one(
+        {"id": item_id},
+        {"_id": 0, "password_hash": 0}
+    )
+
+    return updated
 
 @api_router.put("/users/{item_id}/status")
 async def update_user_status(
@@ -946,6 +1094,44 @@ async def update_user_status(
             }
         }
     )
+
+    # Kirim email keputusan kepada member
+    if status == "APPROVED":
+        subject = "Akun Anda Disetujui — Cahaya Kehidupan"
+        body = f"""Halo {existing.get("name", "")},
+
+Pendaftaran akun Anda di Cahaya Kehidupan telah disetujui oleh Owner.
+
+Anda sekarang dapat login menggunakan akun yang telah didaftarkan.
+
+Selamat datang di Cahaya Kehidupan.
+
+Salam,
+Cahaya Kehidupan
+"""
+
+    elif status == "REJECTED":
+        subject = "Informasi Pendaftaran — Cahaya Kehidupan"
+        body = f"""Halo {existing.get("name", "")},
+
+Kami informasikan bahwa pendaftaran akun Anda di Cahaya Kehidupan belum dapat disetujui oleh Owner.
+
+Apabila Anda membutuhkan informasi lebih lanjut, silakan menghubungi pengelola Cahaya Kehidupan.
+
+Salam,
+Cahaya Kehidupan
+"""
+
+    else:
+        subject = None
+        body = None
+
+    if subject:
+        send_email(
+            existing["email"],
+            subject,
+            body
+        )
 
     updated = await db.users.find_one(
         {"id": item_id},
@@ -1021,14 +1207,22 @@ async def delete_media(item_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.get("/media/file/{path:path}")
 async def serve_media(path: str):
-    record = await db.media.find_one({"path": path, "is_deleted": {"$ne": True}})
+    record = await db.media.find_one(
+        {"path": path, "is_deleted": {"$ne": True}}
+    )
+
     if not record:
         raise HTTPException(404, "File tidak ditemukan")
+
     try:
-        content, content_type = get_object(path)
+        content = get_object(path)
     except Exception:
         raise HTTPException(404, "File tidak dapat diambil")
-    return Response(content=content, media_type=record.get("type", content_type))
+
+    return Response(
+        content=content,
+        media_type=record.get("type", "application/octet-stream")
+    )
 
 
 # ---------------------------------------------------------------------------

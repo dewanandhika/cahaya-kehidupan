@@ -4,7 +4,7 @@ const PUB = `${process.env.REACT_APP_BACKEND_URL}/api/public`;
 const pub = axios.create({ baseURL: PUB });
 
 pub.interceptors.request.use((config) => {
-  const token = localStorage.getItem("ck_token");
+  const token = localStorage.getItem("ck_member_token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

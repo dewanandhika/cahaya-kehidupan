@@ -5,7 +5,12 @@ import { useAuth } from "@/context/AuthContext";
 import { PageHeader, Btn, Field, Spinner, Empty, Modal, RoleBadge } from "@/components/ck";
 import { Plus, Pencil, Trash2, ShieldCheck, Users as UsersIcon } from "lucide-react";
 
-const ROLES = [["SUPER_ADMIN", "Super Admin"], ["EDITOR", "Editor"], ["AUTHOR", "Author"]];
+const ROLES = [
+  ["SUPER_ADMIN", "Super Admin"],
+  ["EDITOR", "Editor"],
+  ["AUTHOR", "Author"],
+  ["MEMBER", "Member"],
+];
 
 export default function Users() {
   const { user } = useAuth();

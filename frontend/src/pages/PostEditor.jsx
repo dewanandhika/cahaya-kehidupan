@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import api, { formatApiError } from "@/lib/api";
 import { PageHeader, Btn, Field, Spinner } from "@/components/ck";
 import MediaPicker from "@/components/MediaPicker";
+import RichTextEditor from "@/components/RichTextEditor";
 import { Save, Send, ArrowLeft } from "lucide-react";
 
 function slugify(t) {
@@ -22,6 +23,8 @@ const empty = {
   excerpt: "",
   content: "",
   cover_image: "",
+  pdf_file: "",
+  download_enabled: false,
   video_url: "",
   gallery_images: [],
   type: "ARTICLE",
@@ -500,23 +503,14 @@ export default function PostEditor() {
             <div className="ck-label">
               Isi &amp; Naskah
             </div>
-
             <Field
-              label="Konten"
-              required
-            >
-              <textarea
-                className="ck-input min-h-[320px] font-serif-ck text-base leading-relaxed"
-                value={form.content}
-                data-testid="editor-textarea-content"
-                onChange={(e) =>
-                  set(
-                    "content",
-                    e.target.value
-                  )
-                }
-                placeholder="Tulis isi konten di sini..."
-              />
+            label="Konten"
+            required
+>
+           <RichTextEditor
+           value={form.content}
+          onChange={(value) => set("content", value)}
+          placeholder="Tulis isi konten di sini..."/>
             </Field>
           </div>
 
@@ -615,6 +609,54 @@ export default function PostEditor() {
               label="Cover"
             />
           </div>
+
+          <div className="ck-card p-6 space-y-4">
+  <div>
+    <div className="ck-label">Berkas PDF</div>
+    <p className="text-xs text-slate-500 mt-1">
+      Lampirkan versi PDF artikel jika tersedia.
+    </p>
+  </div>
+
+  <MediaPicker
+    value={form.pdf_file}
+    onChange={(v) => set("pdf_file", v)}
+    label="PDF"
+    accept="pdf"
+  />
+
+  <label className="flex items-center justify-between gap-3 cursor-pointer pt-2 border-t border-slate-800">
+    <div>
+      <div className="text-sm text-slate-300">
+        Izinkan Unduh PDF
+      </div>
+      <div className="text-xs text-slate-500 mt-0.5">
+        Member yang memiliki akses dapat mengunduh file.
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() =>
+        set("download_enabled", !form.download_enabled)
+      }
+      data-testid="article-toggle-download"
+      className={`relative w-11 h-6 rounded-full transition-colors ${
+        form.download_enabled
+          ? "bg-emerald-500"
+          : "bg-slate-700"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+          form.download_enabled
+            ? "translate-x-5"
+            : ""
+        }`}
+      />
+    </button>
+  </label>
+</div>
 
           {/* KATEGORI */}
           <div className="ck-card p-6 space-y-4">
