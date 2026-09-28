@@ -28,7 +28,7 @@ export default function Tentang() {
   <img
     src="/foto-arief-sulistyanto.png"
     alt="Foto penulis"
-    className="w-full h-full object-cover"
+ className="w-full h-full object-cover object-[50%_10%]"
   />
 </div>
           </div>
