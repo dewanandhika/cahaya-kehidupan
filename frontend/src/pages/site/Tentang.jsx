@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import pub, { mediaUrl } from "@/lib/publicApi";
+import pub from "@/lib/publicApi";
 import { PostCard, Loader } from "@/components/site/ui";
 import { Quote, FileText, BookOpen, BookMarked, Scroll, ArrowRight } from "lucide-react";
 
@@ -25,9 +25,12 @@ export default function Tentang() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-16 grid md:grid-cols-3 gap-10 items-center site-fade">
           <div className="flex justify-center">
             <div className="w-44 h-44 rounded-full bg-gradient-to-br from-gold to-[#8A6420] flex items-center justify-center overflow-hidden ring-4 ring-white/10">
-              {a.avatar ? <img src={mediaUrl(a.avatar)} alt={a.name} className="w-full h-full object-cover" />
-                : <span className="font-display text-6xl font-black text-white">{(a.name || "A")[0]}</span>}
-            </div>
+  <img
+    src="/foto-arief-sulistyanto.png"
+    alt="Foto penulis"
+    className="w-full h-full object-cover"
+  />
+</div>
           </div>
           <div className="md:col-span-2 text-center md:text-left">
             <div className="text-gold text-xs font-bold uppercase tracking-[0.25em] mb-2">Tentang Penulis</div>
